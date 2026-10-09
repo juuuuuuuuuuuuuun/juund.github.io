@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>文字数カウント</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f6;--panel:#fff;--ink:#1b2a3a;--sub:#5d6d7e;--line:#d5dde6;--accent:#0f8b8d;--accent-ink:#fff;--warn:#d9822b;--bad:#c0392b;--ok:#2e8b57;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101820;--panel:#18232f;--ink:#e6edf3;--sub:#93a4b5;--line:#2b3a4a;--accent:#3cc2c4;--accent-ink:#062022;--warn:#f0a35a;--bad:#ef7a6c;--ok:#5fcf93}}
+:root[data-theme="dark"]{--bg:#101820;--panel:#18232f;--ink:#e6edf3;--sub:#93a4b5;--line:#2b3a4a;--accent:#3cc2c4;--accent-ink:#062022;--warn:#f0a35a;--bad:#ef7a6c;--ok:#5fcf93}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",Meiryo,sans-serif;line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+h1{font-size:1.25rem;margin:0;font-weight:700}
+.big{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.big .n{font-size:clamp(3rem,10vw,5rem);font-weight:700;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.big .u{font-size:1.1rem;color:var(--sub)}
+.big .sub{margin-left:auto;color:var(--sub);font-size:.95rem}
+textarea{width:100%;min-height:260px;margin-top:14px;padding:16px;font:inherit;font-size:1rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:14px;resize:vertical}
+textarea:focus,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+button,select,input[type=number]{font:inherit;font-size:.9rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+h2{font-size:1rem;margin:28px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.stat b{display:block;font-size:1.5rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.82rem;color:var(--sub)}
+.limits{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 16px}
+.lim{padding:10px 0;border-bottom:1px solid var(--line)}
+.lim:last-child{border-bottom:0}
+.lim .row{display:flex;justify-content:space-between;gap:8px;font-size:.92rem}
+.lim .row em{font-style:normal;color:var(--sub);font-variant-numeric:tabular-nums}
+.track{height:8px;background:var(--line);border-radius:4px;margin-top:6px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--ok);transition:width .15s}
+.fill.w{background:var(--warn)}.fill.b{background:var(--bad)}
+.custom{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0}
+.custom input{width:110px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+small{color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>文字数カウント</h1>
+  <button id="theme" type="button">表示切替</button>
+</header>
+
+<div class="big" aria-live="polite">
+  <span class="n" id="total">0</span><span class="u">文字</span>
+  <span class="sub">空白・改行を除くと <b id="nospace">0</b> 文字</span>
+</div>
+
+<textarea id="t" placeholder="ここに文章を入力または貼り付け" aria-label="カウントする文章"></textarea>
+
+<div class="bar">
+  <button class="pri" id="copy" type="button">コピー</button>
+  <button id="paste" type="button">貼り付け</button>
+  <button id="trimsp" type="button">空白を削除</button>
+  <button id="trimnl" type="button">改行を削除</button>
+  <button id="undo" type="button">元に戻す</button>
+  <button id="clear" type="button">全消去</button>
+</div>
+
+<h2>詳しい数</h2>
+<div class="grid" id="stats"></div>
+
+<h2>文字数の上限チェック</h2>
+<div class="limits" id="limits"></div>
+
+<p><small>入力内容はこの端末のブラウザ内だけで処理され、外部には送信されません。次回開いたときのために自動保存されます。</small></p>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const t=$('t');
+let prev=null;
+const seg=new Intl.Segmenter('ja',{granularity:'grapheme'});
+const wseg=new Intl.Segmenter('ja',{granularity:'word'});
+const count=s=>{let n=0;for(const _ of seg.segment(s))n++;return n};
+const xWeight=s=>{let w=0;for(const ch of s){const c=ch.codePointAt(0);w+=(c<=0x10FF||(c>=0x2000&&c<=0x200D)||(c>=0x2010&&c<=0x201F)||(c>=0x2032&&c<=0x2037))?1:2}return w};
+const presets=[
+ {name:'X(旧Twitter)',max:280,unit:'重み(全角=2)',f:s=>xWeight(s)},
+ {name:'Instagram キャプション',max:2200,f:s=>count(s)},
+ {name:'Instagram ハッシュタグ',max:30,unit:'個',f:s=>(s.match(/[#＃][^\s#＃]+/g)||[]).length},
+ {name:'meta description(目安)',max:120,f:s=>count(s)},
+ {name:'タイトルタグ(目安)',max:32,f:s=>count(s)},
+ {name:'SMS(日本語)',max:70,f:s=>count(s)},
+ {name:'原稿用紙 1枚',max:400,f:s=>count(s.replace(/\n/g,''))}
+];
+let custom=1000;
+function safeGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function safeSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+custom=+safeGet('moji-custom')||1000;
+
+function buildLimits(){
+  const box=$('limits');box.innerHTML='';
+  presets.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='lim';
+    d.innerHTML=`<div class="row"><span>${p.name}</span><em id="lv${i}"></em></div><div class="track"><div class="fill" id="lf${i}"></div></div>`;
+    box.appendChild(d);
+  });
+  const c=document.createElement('div');c.className='lim';
+  c.innerHTML=`<div class="custom"><label for="cmax">自分で上限を設定</label><input type="number" id="cmax" min="1" value="${custom}"><span>文字</span></div><div class="row"><span></span><em id="cv"></em></div><div class="track"><div class="fill" id="cf"></div></div>`;
+  box.appendChild(c);
+  $('cmax').addEventListener('input',e=>{custom=Math.max(1,+e.target.value||1);safeSet('moji-custom',custom);update()});
+}
+function setBar(fillEl,valEl,v,max,unit){
+  const r=v/max;
+  fillEl.style.width=Math.min(100,r*100)+'%';
+  fillEl.className='fill'+(r>1?' b':r>.9?' w':'');
+  valEl.textContent=r>1?`${v} / ${max}${unit||''}(${v-max} オーバー)`:`${v} / ${max}${unit||''}(残り ${max-v})`;
+}
+function update(){
+  const s=t.value;
+  safeSet('moji-text',s);
+  const total=count(s);
+  const ns=count(s.replace(/\s/g,''));
+  $('total').textContent=total;
+  $('nospace').textContent=ns;
+  const lines=s?s.split('\n').length:0;
+  const paras=s.split(/\n\s*\n/).filter(x=>x.trim()).length;
+  let words=0;for(const w of wseg.segment(s))if(w.isWordLike)words++;
+  const bytes=new TextEncoder().encode(s).length;
+  const sjis=[...s].reduce((a,ch)=>a+(ch.codePointAt(0)<=0x7f||(ch.codePointAt(0)>=0xff61&&ch.codePointAt(0)<=0xff9f)?1:2),0);
+  const full=[...s].filter(ch=>{const c=ch.codePointAt(0);return c>0x7f&&!(c>=0xff61&&c<=0xff9f)}).length;
+  const half=[...s].length-full;
+  const nl=(s.match(/\n/g)||[]).length;
+  const sheets=total?Math.ceil(s.replace(/\n/g,'').length/400):0;
+  const mins=ns/500;
+  const rt=ns===0?'0分':mins<1?`${Math.max(1,Math.round(mins*60))}秒`:`約${Math.round(mins)}分`;
+  const items=[[total,'文字数(空白・改行含む)'],[ns,'文字数(空白・改行除く)'],[full,'全角など'],[half,'半角'],[lines,'行数'],[paras,'段落数'],[nl,'改行の数'],[words,'単語数(目安)'],[bytes,'バイト数(UTF-8)'],[sjis,'バイト数(Shift_JIS換算)'],[sheets,'原稿用紙(400字)の枚数'],[rt,'読む時間(500字/分)']];
+  $('stats').innerHTML=items.map(([v,l])=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+  presets.forEach((p,i)=>setBar($('lf'+i),$('lv'+i),p.f(s),p.max,p.unit&&p.unit==='個'?' 個':''));
+  setBar($('cf'),$('cv'),total,custom);
+}
+function toast(m){const e=$('toast');e.textContent=m;e.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove('on'),1600)}
+function edit(fn,msg){prev=t.value;t.value=fn(t.value);update();toast(msg)}
+
+t.addEventListener('input',update);
+$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(t.value);toast('コピーしました')}catch(e){t.select();document.execCommand('copy');toast('コピーしました')}};
+$('paste').onclick=async()=>{try{const x=await navigator.clipboard.readText();edit(()=>x,'貼り付けました')}catch(e){toast('貼り付けできません。Ctrl+V をお使いください');t.focus()}};
+$('trimsp').onclick=()=>edit(s=>s.replace(/[ \t\u3000]/g,''),'空白を削除しました');
+$('trimnl').onclick=()=>edit(s=>s.replace(/\r?\n/g,''),'改行を削除しました');
+$('undo').onclick=()=>{if(prev===null)return toast('戻せる操作がありません');const c=t.value;t.value=prev;prev=c;update();toast('元に戻しました')};
+$('clear').onclick=()=>{if(!t.value)return;edit(()=>'','消去しました(「元に戻す」で復元できます)')};
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dark?'light':'dark'};
+
+buildLimits();
+t.value=safeGet('moji-text')||'';
+update();
+</script>
+</body>
+</html>
